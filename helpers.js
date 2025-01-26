@@ -14,11 +14,9 @@ export const ensureProcessDir = async (processId, dataDir) => {
 
 export const saveProcessData = async (processId, data, dataDir) => {
     const processDir = await ensureProcessDir(processId, dataDir);
-    const sanitizedData = { ...data };
-    delete sanitizedData.process;
     await fs.writeFile(
         join(processDir, 'process.json'),
-        JSON.stringify(sanitizedData, null, 2)
+        JSON.stringify(data, null, 2)
     );
 };
 
@@ -55,19 +53,12 @@ export const spawnProcess = async (process, dataDir) => {
     return childProcess;
 };
 
-export const killProcess = (childProcess) => {
-    console.log('Killing process:', childProcess.pid);
+export const killProcess = (pid) => {
+    console.log('Killing process:', pid);
     try {
-        // First try to kill the process directly
-        childProcess.kill('SIGKILL');
+        process.kill(pid, 'SIGKILL');
     } catch (err) {
-        console.error('Error killing process directly:', err);
-        try {
-            // Fallback to killing process group
-            process.kill(childProcess.pid, 'SIGKILL');
-        } catch (err) {
-            console.error('Error killing process group:', err);
-        }
+        console.error('Error killing process group:', err);
     }
 };
 
@@ -79,7 +70,7 @@ export const loadProcesses = async (dataDir) => {
             try {
                 const processPath = join(dataDir, dir, 'process.json');
                 const data = JSON.parse(await fs.readFile(processPath, 'utf8'));
-                
+
                 // Check if process was running and verify its status
                 if (data.status === 'running' && data.pid) {
                     try {
@@ -92,8 +83,8 @@ export const loadProcesses = async (dataDir) => {
                         await saveProcessData(dir, data, dataDir);
                     }
                 }
-                
-                processes.push({ ...data, process: null });
+
+                processes.push({ ...data });
             } catch (err) {
                 console.error(`Error loading process ${dir}:`, err);
             }
